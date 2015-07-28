@@ -1,0 +1,75 @@
+#!/usr/bin/python
+
+import sys, os, traceback, optparse
+import operator
+import time
+import csv
+
+# with open('test.csv', 'rb') as f:
+#     reader = csv.reader(f)
+#     your_list = map(tuple, reader)
+#
+# print your_list
+
+def main ():
+    global options, args
+
+    if options.verbose:
+        print 'Options:'
+        if options.guest_file:
+            print 'Guest File: ' + options.guest_file
+        elif options.tables:
+            print 'Tables: ' + options.tables
+        elif options.table_file:
+            print 'Table File: ' + options.table_file
+        elif options.output_file:
+            print 'Output File: ' + options.output_file
+        elif options.interactive:
+            print 'Interactive Mode'
+        elif options.diagram:
+            print 'Diagram Mode'
+        elif options.verbose:
+            print 'Verbose Mode'
+        elif options.quiet:
+            print 'Quiet Mode'
+
+if __name__ == '__main__':
+    try:
+        start_time = time.time()
+        parser = optparse.OptionParser(formatter=optparse.TitledHelpFormatter(), usage=globals()['__doc__'], version='$Id$')
+
+        parser.add_option('-g', '--guest', action='store', type='string', dest='guest_file', help='guest file')
+
+        parser.add_option('-t', '--table', action='store', type='string', dest='tables', help='\'-t (t, p)\' assume `t` tables with `p` people each - cannot be used with `-T`')
+
+        parser.add_option('-T', '--Table', action='store', type='string', dest='table_file', help='table file - cannot be used with `-t`')
+
+        parser.add_option('-o', '--output', action='store', type='string', dest='output_file', help='output file')
+
+        parser.add_option('-i', '--interactive', action='store_true', default=False, help='interactive mode')
+
+        parser.add_option('-d', '--diagram', action='store_true', default=False, help='diagram mode')
+
+        parser.add_option('-v', '--verbose', action='store_true', default=False, help='verbose mode')
+
+        parser.add_option('-q', '--quiet', action='store_true', default=False, help='quiet mode')
+
+        (options, args) = parser.parse_args()
+
+        if not options.guest_file:
+            parser.error('missing argument: -g GUEST_FILE')
+
+        main()
+        if options.verbose: print '\n' + time.asctime()
+        if options.verbose: print 'Total Runtime:',
+        if options.verbose: print str((time.time() - start_time) * 1000) + ' ms'
+        sys.exit(0)
+    except KeyboardInterrupt, e: # Ctrl-C
+        raise e
+    except SystemExit, e: # sys.exit()
+        raise e
+    except Exception, e:
+        print 'Error: Unexpected Exception'
+        print str(e)
+        traceback.print_exc()
+        os._exit(1)
