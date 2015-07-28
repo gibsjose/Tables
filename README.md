@@ -9,6 +9,7 @@ Tables [options] -g GUEST_FILE
 
 ##Options
 'Tables' supports a multitude of options including:
+
 1. `-g GUEST_FILE`: Read in a list of attendees with the format described below
 2. `-t (t, p)`: Assume `t` tables with `p` people each. Cannot be used with `-T`
 3. `-T TABLE_FILE`: Read in a list of table properties with the format described below. Cannot be used with `-t`
