@@ -32,6 +32,8 @@ def main ():
             print 'Verbose Mode'
         elif options.quiet:
             print 'Quiet Mode'
+        elif options.algorithm:
+            print 'Algorithm: ' + options.algorithm
 
 if __name__ == '__main__':
     try:
@@ -53,7 +55,9 @@ if __name__ == '__main__':
         parser.add_option('-v', '--verbose', action='store_true', default=False, help='verbose mode')
 
         parser.add_option('-q', '--quiet', action='store_true', default=False, help='quiet mode')
-
+        
+        parser.add_option('-a', '--algorithm', action='store', type='string', dest='algorithm', help='algorithm selection: first-fit, best-fit, worst-fit, random')
+        
         (options, args) = parser.parse_args()
 
         if not options.guest_file:

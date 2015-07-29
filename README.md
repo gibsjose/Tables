@@ -18,7 +18,8 @@ Tables [options] -g GUEST_FILE
 6. `-d`: Diagram output
 7. `-v`: Operate in verbose mode
 8. `-q`: Quiet mode
-9. `-h`: Display the help
+9. `-a`: Algorithm selection (...)
+10. `-h`: Display the help
 
 ##Guest File
 The `GUEST_FILE` must be a CSV file with the following format:
