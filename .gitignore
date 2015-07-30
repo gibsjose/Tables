@@ -1,3 +1,7 @@
 #Ignore Temp Files
 *~
 ~*
+
+#Ignore CSV and Tables Files
+*.csv
+*.tables
