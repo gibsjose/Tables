@@ -56,13 +56,19 @@ class Guests:
     def __init__(self, guest_file):
         self.file = guest_file
         self.list = []
+        self.count = 0
+        self.people = 0
 
         with open(self.file, 'r') as f:
             reader = csv.reader(f)
             self.list = [tuple(line) for line in reader]
+            self.count = len(self.list)
+
+            for guest in self.list:
+                self.people += int(guest[1])
 
     def Print(self):
-        print('There are ' + str(len(self.list)) + ' guests:')
+        print('There are ' + str(self.count) + ' parties and ' + str(self.people) + ' total guests:')
         print(self.list, end='\n\n')
 
 class Tables:
@@ -70,6 +76,8 @@ class Tables:
         self.table_count = table_count
         self.file = table_file
         self.list = []
+        self.count = 0
+        self.seats = 0
 
     def ParseTableCount(self):
         print('ParseTableCount')
@@ -94,6 +102,11 @@ class Tables:
                     self.list.append(('Table ' + str(offset), int(table[1])))
                     offset = offset + 1
 
+        self.count = len(self.list)
+
+        for table in self.list:
+            self.seats += int(table[1])
+
     def ParseTables(self):
         if self.table_count:
             self.ParseTableCount()
@@ -101,7 +114,7 @@ class Tables:
             self.ParseTableFile()
 
     def Print(self):
-        print('There are ' + str(len(self.list)) + ' tables:')
+        print('There are ' + str(self.count) + ' tables and ' + str(self.seats) + ' total seats:')
         print(self.list, end='\n\n')
 
 def main ():
