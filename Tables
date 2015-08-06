@@ -17,6 +17,8 @@ class SeatPacker:
     def __init__(self, guests = [], tables = [], algorithm = 'first-fit'):
         self.guests = guests
         self.tables = tables
+        self.start_time = time.time()
+        self.end_time = time.time()
 
         if algorithm == 'first-fit':
             self.algorithm = Algorithm.first_fit
@@ -27,13 +29,17 @@ class SeatPacker:
         elif algorithm == 'random':
             self.algorithm = Algorithm.random
         else:
-            print('Error: Unknown algorithm: ' + algorithm)
-            sys.exit(1)
+            raise Exception('Unknown algorithm: ' + algorithm)
 
         self.algorithm_str = algorithm
 
+    def Run(self):
+        self.start_time = time.time()
+        #...
+        self.end_time = time.time()
+
     def Print(self):
-        print('Algorithm: ' + self.algorithm_str)
+        print(self.algorithm_str + ' runtime: ' + str((self.end_time - self.start_time) * 1000) + ' ms')
 
 class Guest:
     def __init__(self, name, size, children):
@@ -42,7 +48,7 @@ class Guest:
         self.children = children
 
     def Print(self):
-        print(self.name + ': ' + str(self.size) + ', Children: ' + str(self.children))
+        print('\t{:<20}{:>3}\t'.format(self.name, str(self.size)) + '\tChildren: ' + str(self.children))
 
 class Table:
     def __init__(self, name, size):
@@ -50,7 +56,7 @@ class Table:
         self.size = size
 
     def Print(self):
-        print(self.name + ' (' + str(self.size) + ')')
+        print('\t{:<20}{:>3} seats'.format(self.name, str(self.size)))
 
 class Guests:
     def __init__(self, guest_file):
@@ -59,17 +65,32 @@ class Guests:
         self.count = 0
         self.people = 0
 
+        temp_list = []
+
         with open(self.file, 'r') as f:
             reader = csv.reader(f)
-            self.list = [tuple(line) for line in reader]
+            temp_list = [tuple(line) for line in reader]
+
+            for item in temp_list:
+                if item[2].lower().strip() == 'true':
+                    guest = Guest(item[0], int(item[1]), True)
+                else:
+                    guest = Guest(item[0], int(item[1]), False)
+
+                self.list.append(guest)
+
             self.count = len(self.list)
 
             for guest in self.list:
-                self.people += int(guest[1])
+                self.people += int(guest.size)
 
     def Print(self):
         print('There are ' + str(self.count) + ' parties and ' + str(self.people) + ' total guests:')
-        print(self.list, end='\n\n')
+
+        for guest in self.list:
+            guest.Print()
+
+        print('')
 
 class Tables:
     def __init__(self, table_count, table_file):
@@ -97,15 +118,17 @@ class Tables:
 
             offset = 1
 
-            for table in temp_list:
-                for i in range(1, int(table[0]) + 1):
-                    self.list.append(('Table ' + str(offset), int(table[1])))
+            for item in temp_list:
+                for i in range(1, int(item[0]) + 1):
+                    table = Table('Table ' + str(offset), int(item[1]))
+                    self.list.append(table)
                     offset = offset + 1
 
-        self.count = len(self.list)
 
-        for table in self.list:
-            self.seats += int(table[1])
+            self.count = len(self.list)
+
+            for table in self.list:
+                self.seats += table.size
 
     def ParseTables(self):
         if self.table_count:
@@ -115,7 +138,11 @@ class Tables:
 
     def Print(self):
         print('There are ' + str(self.count) + ' tables and ' + str(self.seats) + ' total seats:')
-        print(self.list, end='\n\n')
+
+        for table in self.list:
+            table.Print()
+
+        print('')
 
 def main ():
     global options, args
@@ -123,23 +150,23 @@ def main ():
     if options.verbose:
         print('Options:')
         if options.guest_file:
-            print('Guest File: ' + options.guest_file)
-        elif options.tables:
-            print('Tables: ' + options.tables)
-        elif options.table_file:
-            print('Table File: ' + options.table_file)
-        elif options.output_file:
-            print('Output File: ' + options.output_file)
-        elif options.interactive:
-            print('Interactive Mode')
-        elif options.diagram:
-            print('Diagram Mode')
-        elif options.verbose:
-            print('Verbose Mode')
-        elif options.quiet:
-            print('Quiet Mode')
-        elif options.algorithm:
-            print('Algorithm: ' + options.algorithm)
+            print('\tGuest File: ' + options.guest_file)
+        if options.tables:
+            print('\tTables: ' + options.tables)
+        if options.table_file:
+            print('\tTable File: ' + options.table_file)
+        if options.output_file:
+            print('\tOutput File: ' + options.output_file)
+        if options.interactive:
+            print('\tInteractive Mode')
+        if options.diagram:
+            print('\tDiagram Mode')
+        if options.verbose:
+            print('\tVerbose Mode')
+        if options.quiet:
+            print('\tQuiet Mode')
+        if options.algorithm:
+            print('\tAlgorithm: ' + options.algorithm)
 
     if options.tables:
         tables = Tables(options.tables, None)
@@ -148,6 +175,8 @@ def main ():
     else:
         raise Exception('Must supply table information through either -t or -T')
         sys.exit(1)
+
+    print('')
 
     #Create the guest list
     guests = Guests(options.guest_file)
@@ -158,14 +187,25 @@ def main ():
     tables.Print()
 
     #Use the algorithm supplied or default to 'first-fit'
-    if not options.algorithm:
-        options.algorithm = 'first-fit'
+    if options.algorithm:
+        algorithm = options.algorithm
+    else:
+        algorithm = 'first-fit'
 
     #Perform the bin packing
-    packer = SeatPacker(guests, tables, options.algorithm)
+    packer = SeatPacker(guests, tables, algorithm)
+    packer.Run()
     packer.Print()
 
     #Write the output file
+    if options.output_file:
+        output_file = options.output_file
+    else:
+        #@TODO Figure out a way to make this better in terms of UI... Asking for input is probably decent, but it screws up the algorithm timing...
+        #Maybe it would be better to time the placement algorithm itself in addition to the total runtime of the script...
+        #output_file = input('Output Filename: ')
+        output_file = 'map.tables'
+
     #packer.Write(options.output_file)
 
 if __name__ == '__main__':
