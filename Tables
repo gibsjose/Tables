@@ -2,15 +2,10 @@
 
 from enum import Enum
 import sys, os, traceback, optparse
+import re
 import operator
 import time
 import csv
-
-# with open('test.csv', 'rb') as f:
-#     reader = csv.reader(f)
-#     your_list = map(tuple, reader)
-#
-# print your_list
 
 class Algorithm(Enum):
     first_fit = 0
@@ -19,15 +14,18 @@ class Algorithm(Enum):
     random = 3
 
 class SeatPacker:
-    def __init__(self, algorithm):
+    def __init__(self, guests = [], tables = [], algorithm = 'first-fit'):
+        self.guests = guests
+        self.tables = tables
+
         if algorithm == 'first-fit':
-            self.algorithm = first_fit
+            self.algorithm = Algorithm.first_fit
         elif algorithm == 'best-fit':
-            self.algorithm = best_fit
+            self.algorithm = Algorithm.best_fit
         elif algorithm == 'worst-fit':
-            self.algorithm = worst_fit
+            self.algorithm = Algorithm.worst_fit
         elif algorithm == 'random':
-            self.algorithm = random
+            self.algorithm = Algorithm.random
         else:
             print('Error: Unknown algorithm: ' + algorithm)
             sys.exit(1)
@@ -56,32 +54,55 @@ class Table:
 
 class Guests:
     def __init__(self, guest_file):
-        self.guest_file = guest_file
-        self.guests = {}
+        self.file = guest_file
+        self.list = []
+
+        with open(self.file, 'r') as f:
+            reader = csv.reader(f)
+            self.list = [tuple(line) for line in reader]
 
     def Print(self):
-        print('There are ' + len(self.guests) + ' guests')
+        print('There are ' + str(len(self.list)) + ' guests:')
+        print(self.list, end='\n\n')
 
 class Tables:
     def __init__(self, table_count, table_file):
         self.table_count = table_count
-        self.table_file = table_file
-        self.tables = {}
+        self.file = table_file
+        self.list = []
+
+    def ParseTableCount(self):
+        print('ParseTableCount')
+
+    def ParseTableFile(self):
+        temp_list = []
+
+        with open(self.file, 'r') as f:
+            for line in f:
+                if line.startswith('$'):
+                    continue
+                elif line.isspace():
+                    continue
+                else:
+                    line = line.translate({ord(i):None for i in ' ()\n'})
+                    temp_list.append(tuple(line.split(',')))
+
+            offset = 1
+
+            for table in temp_list:
+                for i in range(1, int(table[0]) + 1):
+                    self.list.append(('Table ' + str(offset), int(table[1])))
+                    offset = offset + 1
 
     def ParseTables(self):
         if self.table_count:
-            ParseTableCount()
+            self.ParseTableCount()
         else:
-            ParseTableFile()
-
-    def ParseTableCount(self):
-        None
-
-    def ParseTableFile(self):
-        None
+            self.ParseTableFile()
 
     def Print(self):
-        print('There are ' + len(self.tables) + ' tables')
+        print('There are ' + str(len(self.list)) + ' tables:')
+        print(self.list, end='\n\n')
 
 def main ():
     global options, args
@@ -112,11 +133,8 @@ def main ():
     elif options.table_file:
         tables = Tables(None, options.table_file)
     else:
-        print('Must supply table information through either -t or -T')
+        raise Exception('Must supply table information through either -t or -T')
         sys.exit(1)
-
-    if not options.algorithm:
-        options.algorithm = ''
 
     #Create the guest list
     guests = Guests(options.guest_file)
@@ -126,11 +144,16 @@ def main ():
     tables.ParseTables()
     tables.Print()
 
+    #Use the algorithm supplied or default to 'first-fit'
+    if not options.algorithm:
+        options.algorithm = 'first-fit'
+
     #Perform the bin packing
-    packer = SeatPacker(guests, tables)
+    packer = SeatPacker(guests, tables, options.algorithm)
     packer.Print()
 
     #Write the output file
+    #packer.Write(options.output_file)
 
 if __name__ == '__main__':
     try:
@@ -162,7 +185,7 @@ if __name__ == '__main__':
 
         main()
         if options.verbose: print('\n' + time.asctime())
-        if options.verbose: print('Total Runtime:',)
+        if options.verbose: print('Total Runtime: ', end='')
         if options.verbose: print(str((time.time() - start_time) * 1000) + ' ms')
         sys.exit(0)
     except KeyboardInterrupt as e: # Ctrl-C
