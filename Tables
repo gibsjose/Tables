@@ -13,39 +13,202 @@ class Algorithm(Enum):
     worst_fit = 2
     random = 3
 
+class Direction(Enum):
+    none = 0
+    ascending = 1
+    descending = 2
+
 class SeatPacker:
     def __init__(self, guests = [], tables = [], algorithm = 'first-fit'):
-        self.guests = guests
-        self.tables = tables
+        self.guests = guests.list
+        self.tables = tables.list
         self.start_time = time.time()
         self.end_time = time.time()
+        self.unseated_parties = 0
+        self.unseated_guests = 0
+        self.with_children = []
+        self.without_children = []
 
+        #Default: Process SMALLEST parties first
+        self.guest_direction = Direction.ascending
+
+        #Default: Seat in LARGEST tables first
+        self.table_direction = Direction.descending
+
+        #Ascending: Place SMALLEST parties in FIRST partition large enough
         if algorithm == 'first-fit':
             self.algorithm = Algorithm.first_fit
+            self.guest_direction = Direction.ascending
+            self.table_direction = Direction.descending
+
+        #Descending: Place LARGEST parties in FIRST partition large enough
+        elif algorithm == 'first-fit-descending':
+            self.algorithm = Algorithm.first_fit
+            self.guest_direction = Direction.descending
+            self.table_direction = Direction.descending
+
+        #Place LARGEST parties in SMALLEST partition large enough
         elif algorithm == 'best-fit':
             self.algorithm = Algorithm.best_fit
+            self.guest_direction = Direction.descending
+            self.table_direction = Direction.ascending
+
+        #Place SMALLEST parties in LARGEST partition large enough
         elif algorithm == 'worst-fit':
             self.algorithm = Algorithm.worst_fit
+            self.guest_direction = Direction.ascending
+            self.table_direction = Direction.descending
+
+        #Place parties randomly
         elif algorithm == 'random':
             self.algorithm = Algorithm.random
+
+        #Unknown...
         else:
             raise Exception('Unknown algorithm: ' + algorithm)
 
         self.algorithm_str = algorithm
 
+    #Split, Sort, Seat.
     def Run(self):
         self.start_time = time.time()
-        #...
+
+        #Split guest into those WITH children and those WITHOUT
+        self.Split()
+
+        print('\nSPLITING')
+        print('--------')
+        print('With Children:')
+        for guest in self.with_children:
+            guest.Print()
+
+        print('\nWithout Children:')
+        for guest in self.without_children:
+            guest.Print()
+
+        #Sort parties and tables based on algorithm
+        self.Sort()
+
+        print('\nSORTING')
+        print('-------')
+        print('Guests:')
+        for guest in self.with_children:
+            guest.Print()
+        for guest in self.without_children:
+            guest.Print()
+
+        print('\nTables:')
+        for table in self.tables:
+            table.Print()
+
+        #Seat parties
+        self.Seat()
+
         self.end_time = time.time()
 
+    #Split guests into those with and without children
+    def Split(self):
+        for guest in self.guests:
+            if guest.children:
+                self.with_children.append(guest)
+            else:
+                self.without_children.append(guest)
+
+    #Sort both tables and parties
+    def Sort(self):
+        self.SortTables()
+        self.SortParties()
+
+    #Sort tables by direction (ASCENDING, DESCENDING, or none)
+    def SortTables(self):
+        #Smallest first
+        if self.table_direction == Direction.ascending:
+            self.tables.sort(key = lambda x: x.size)
+        #Largest first
+        elif self.table_direction == Direction.descending:
+            self.tables.sort(key = lambda x: x.size, reverse = True)
+
+    #Sort parties by direction (ASCENDING, DESCENDING, or none)
+    def SortParties(self):
+        #Smallest first
+        if self.guest_direction == Direction.ascending:
+            self.with_children.sort(key = lambda x: x.size)
+            self.without_children.sort(key = lambda x: x.size)
+
+        #Largest first
+        elif self.guest_direction == Direction.descending:
+            self.with_children.sort(key = lambda x: x.size, reverse = True)
+            self.without_children.sort(key = lambda x: x.size, reverse = True)
+
+    #Seat those with children and then those without
+    def Seat(self):
+        print('\nSEATING')
+        print('-------')
+        self.SeatList(self.with_children)
+        self.SeatList(self.without_children)
+
+    #Seat an individual list
+    def SeatList(self, guests):
+        #Try to seat guests
+        for guest in guests:
+            #Skip guests that have been seated already
+            if guest.seated == True:
+                continue
+
+            for table in self.tables:
+                #Guests fit at table with no problem
+                if table.available >= guest.size:
+                    guest.tables.append((table, guest.size))
+                    guest.seated = True
+                    table.available -= guest.size
+                    self.SortTables()
+                    print(guest.name + ', party of ' + str(guest.size) + ' was seated at ' + table.name + ', with ' + str(table.available) + ' seats left')
+                    break
+
+                #Guests do not fit, try the next table
+                else:
+                    continue
+
+        #Count unseated parties
+        for guest in guests:
+            if guest.seated == False:
+                self.unseated_parties += 1
+                self.unseated_guests += guest.size
+
     def Print(self):
-        print(self.algorithm_str + ' runtime: ' + str((self.end_time - self.start_time) * 1000) + ' ms')
+        print('\nALGORITHM')
+        print('---------')
+        print('Algorithm used: ' + self.algorithm_str)
+
+        print('Guests were seated ', end='')
+        if self.guest_direction == Direction.ascending:
+            print('by smallest party first, ', end='')
+        elif self.guest_direction == Direction.descending:
+            print('by largest party first, ', end='')
+        else:
+            print('as listed, ', end='')
+
+        if self.table_direction == Direction.ascending:
+            print('at the smallest tables')
+        elif self.table_direction == Direction.descending:
+            print('at the largest tables')
+        else:
+            print('at the tables as listed')
+
+        print('')
+
+        print('Runtime: ' + str((self.end_time - self.start_time) * 1000) + ' ms')
+
+        print('Unseated Parties: ' + str(self.unseated_parties))
+        print('Unseated Guests: ' + str(self.unseated_guests))
 
 class Guest:
     def __init__(self, name, size, children):
         self.name = name
         self.size = size
         self.children = children
+        self.tables = []
+        self.seated = False
 
     def Print(self):
         print('\t{:<20}{:>3}\t'.format(self.name, str(self.size)) + '\tChildren: ' + str(self.children))
@@ -54,6 +217,7 @@ class Table:
     def __init__(self, name, size):
         self.name = name
         self.size = size
+        self.available = self.size
 
     def Print(self):
         print('\t{:<20}{:>3} seats'.format(self.name, str(self.size)))
@@ -85,12 +249,12 @@ class Guests:
                 self.people += int(guest.size)
 
     def Print(self):
+        print('GUESTS')
+        print('------')
         print('There are ' + str(self.count) + ' parties and ' + str(self.people) + ' total guests:')
 
         for guest in self.list:
             guest.Print()
-
-        print('')
 
 class Tables:
     def __init__(self, table_count, table_file):
@@ -137,18 +301,19 @@ class Tables:
             self.ParseTableFile()
 
     def Print(self):
+        print('\nTABLES')
+        print('------')
         print('There are ' + str(self.count) + ' tables and ' + str(self.seats) + ' total seats:')
 
         for table in self.list:
             table.Print()
 
-        print('')
-
 def main ():
     global options, args
 
     if options.verbose:
-        print('Options:')
+        print('OPTIONS')
+        print('-------')
         if options.guest_file:
             print('\tGuest File: ' + options.guest_file)
         if options.tables:
@@ -157,6 +322,8 @@ def main ():
             print('\tTable File: ' + options.table_file)
         if options.output_file:
             print('\tOutput File: ' + options.output_file)
+        if options.algorithm:
+            print('\tAlgorithm: ' + options.algorithm)
         if options.interactive:
             print('\tInteractive Mode')
         if options.diagram:
@@ -165,8 +332,6 @@ def main ():
             print('\tVerbose Mode')
         if options.quiet:
             print('\tQuiet Mode')
-        if options.algorithm:
-            print('\tAlgorithm: ' + options.algorithm)
 
     if options.tables:
         tables = Tables(options.tables, None)
