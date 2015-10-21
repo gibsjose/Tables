@@ -232,14 +232,19 @@ class Guests:
         temp_list = []
 
         with open(self.file, 'r') as f:
-            reader = csv.reader(f)
+            dialect = csv.Sniffer().sniff(f.read(2048), delimiters=";")
+            f.seek(0)
+            reader = csv.reader(f, dialect)
             temp_list = [tuple(line) for line in reader]
 
             for item in temp_list:
                 if item[2].lower().strip() == 'true':
                     guest = Guest(item[0], int(item[1]), True)
+                elif int(item[2]) > 0:
+                    guest = Guest(item[0], int(item[1]), True)
                 else:
                     guest = Guest(item[0], int(item[1]), False)
+
 
                 self.list.append(guest)
 
